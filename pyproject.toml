@@ -25,3 +25,8 @@ audiovec = "main:main"
 
 [tool.setuptools.packages.find]
 include = ["audiovec*"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+]

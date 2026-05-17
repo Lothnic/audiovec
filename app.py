@@ -27,6 +27,8 @@ from matplotlib.colors import LinearSegmentedColormap
 from audiovec.config import EMOTION_MAPPING, MAX_PAD_LEN, SAMPLE_RATE
 from audiovec.data import load_and_process_audio
 from audiovec.predict import ensure_model, extract_embedding, load_trained_model, predict_emotion
+from audiovec.search import embeddings_cached, find_similar, load_ravdess_embeddings
+from audiovec.sliding import compute_sliding_predictions, plot_emotion_curves
 
 # -- Page config --------------------------------------------------------------
 
@@ -207,6 +209,54 @@ st.markdown(
         background: #1A212D;
     }
 
+    /* -- Similarity cards ------------------------------------------------ */
+    .similar-card {
+        background: #141A24;
+        border: 1px solid #1E293B;
+        border-radius: 12px;
+        padding: 0.9rem 1rem;
+        margin-bottom: 0.7rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .similar-card:hover {
+        border-color: #A78BFA;
+        box-shadow: 0 0 12px rgba(167,139,250,0.12);
+    }
+    .similar-card .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+    .similar-card .info {
+        flex: 1;
+        min-width: 0;
+    }
+    .similar-card .info .emotion {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #E2E8F0;
+    }
+    .similar-card .info .meta {
+        font-size: 0.72rem;
+        color: #64748B;
+        margin-top: 0.1rem;
+    }
+    .similar-card .score {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #A78BFA;
+        flex-shrink: 0;
+        font-variant-numeric: tabular-nums;
+    }
+    .similar-card .audio-wrap {
+        flex-shrink: 0;
+        width: 180px;
+    }
+
     /* -- Footer ---------------------------------------------------------- */
     .footer {
         text-align: center;
@@ -253,6 +303,12 @@ def _load_model():
 
 
 model = _load_model()
+
+
+@st.cache_resource(show_spinner="Loading RAVDESS reference embeddings…")
+def _load_ravdess_embeddings():
+    return load_ravdess_embeddings()
+
 
 # -- Upload -------------------------------------------------------------------
 
@@ -426,6 +482,59 @@ for i, code in enumerate(emotion_codes):
     """
 st.markdown(html_bars, unsafe_allow_html=True)
 
+# -- Emotion probability curves (sliding window over long audio) --------------
+
+DURATION_THRESHOLD = 8.0  # seconds — minimum for meaningful sliding windows
+
+window_len_s = MAX_PAD_LEN * 512 / sr  # seconds per window
+duration = len(audio) / sr
+if duration > DURATION_THRESHOLD:
+    st.markdown('<div class="section-title">Emotion Over Time</div>', unsafe_allow_html=True)
+    st.caption(
+        f"Sliding-window analysis over {duration:.1f}s of audio "
+        f"(window {window_len_s:.1f}s, 50% overlap)."
+    )
+
+    with st.spinner("Computing time-resolved predictions…"):
+        progress_bar = st.progress(0, text="Processing windows…")
+        try:
+            result = compute_sliding_predictions(
+                model,
+                audio,
+                sr=sr,
+                progress_callback=lambda cur, tot: progress_bar.progress(
+                    cur / tot, text=f"Window {cur}/{tot}…"
+                ),
+            )
+        finally:
+            progress_bar.empty()
+
+    if not result["single"]:
+        fig_curves = plot_emotion_curves(
+            result["timeline"],
+            result["probs"],
+            result["emotion_labels"],
+        )
+        st.pyplot(fig_curves, width="stretch")
+
+        # Mark the segment with strongest prediction
+        dominant = result["probs"].argmax(axis=1)
+        top_emoji = ["😐", "😌", "😊", "😢", "😡", "😰", "🤢", "😲"]
+        segments = []
+        for i, idx in enumerate(dominant):
+            label = result["emotion_labels"][idx]
+            seg = f"{i+1}. {top_emoji[idx]}{label}"
+            if i < len(dominant) - 1:
+                seg += " → "
+            segments.append(seg)
+        st.caption("Emotion flow: " + "".join(segments))
+    else:
+        st.caption(
+            "Audio is not long enough for meaningful sliding-window analysis. "
+            "The single global prediction is shown above."
+        )
+    st.divider()
+
 # -- Embedding + Spectrogram --------------------------------------------------
 
 st.markdown('<div class="section-title">Embedding Vector</div>', unsafe_allow_html=True)
@@ -526,6 +635,63 @@ ax_wav.set_facecolor("#0B0E14")
 fig_wav.tight_layout(pad=0.5)
 
 st.pyplot(fig_wav, width='stretch')
+
+# -- Similarity search — find nearest RAVDESS samples ------------------------
+
+EMOTION_COLORS = {
+    "neutral": "#A78BFA", "calm": "#60A5FA", "happy": "#34D399",
+    "sad": "#FBBF24", "angry": "#F87171", "fearful": "#FB923C",
+    "disgust": "#E879F9", "surprised": "#22D3EE",
+}
+
+st.markdown('<div class="section-title">Most Similar RAVDESS Samples</div>', unsafe_allow_html=True)
+
+if embeddings_cached():
+    try:
+        ravdess_embeddings, ravdess_metadata = _load_ravdess_embeddings()
+        similar = find_similar(embedding, ravdess_embeddings, ravdess_metadata, k=5)
+
+        st.caption(
+            "Closest matches in the RAVDESS emotion reference set "
+            "(1,440 labelled recordings from 24 actors)."
+        )
+
+        for rank, entry in enumerate(similar, start=1):
+            emo_lower = entry["emotion"]
+            emo_color = EMOTION_COLORS.get(emo_lower, "#A78BFA")
+            emo_title = emo_lower.title()
+            actor_num = entry["actor"]
+            sim_pct = f"{entry['similarity']:.1%}"
+            extra = f"intensity {entry['intensity']}" if entry['intensity'] else ""
+
+            card_html = f"""
+            <div class="similar-card">
+                <span class="dot" style="background:{emo_color};"></span>
+                <div class="info">
+                    <div class="emotion">#{rank}  {emo_title}</div>
+                    <div class="meta">Actor {actor_num:02d}  ·  {extra}</div>
+                </div>
+                <div class="score">{sim_pct} match</div>
+            </div>
+            """
+            st.markdown(card_html, unsafe_allow_html=True)
+
+            # Audio player below each card
+            try:
+                with open(entry["path"], "rb") as fh:
+                    st.audio(fh.read(), format="audio/wav")
+            except Exception:
+                st.caption("_(audio file not found on disk)_")
+
+    except Exception as e:
+        st.caption(f"Could not compute similarity search: {e}")
+else:
+    st.caption(
+        "RAVDESS reference embeddings not pre-computed. Run "
+        "`uv run python -c \"from audiovec.search import precompute_ravdess_embeddings; "
+        "precompute_ravdess_embeddings()\"` to enable similarity search."
+    )
+
 
 # -- Footer -------------------------------------------------------------------
 

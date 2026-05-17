@@ -123,10 +123,6 @@ uv run python train_crnn.py
 
 Edit constants at the top of `train_crnn.py` to adjust data dir, epochs, batch size, dropout rates, etc.
 
-### SVM Baseline
-
-For a classical ML comparison, the SVM baseline is available in `audiovec/svm_baseline.py` and can be run programmatically.
-
 ### Pretrained Model
 
 The model is hosted on Hugging Face Hub for easy download:
