@@ -73,7 +73,7 @@ The **embedding layer** (256 dimensions) is the core artifact — a compact vect
 - **Emotions**: neutral, calm, happy, sad, angry, fearful, disgust, surprised
 - **Loss**: Cross-entropy (`nn.CrossEntropyLoss`)
 - **Optimizer**: Adam (learning rate 0.001)
-- **Best architecture**: CRNN-Transformer (72.92% val accuracy) — see [report.md](report.md) for the full 5-way comparison
+- **Best architecture**: CRNN-Transformer (72.92% val accuracy)
 
 Train from scratch:
 ```
@@ -198,7 +198,6 @@ docker run -p 7860:7860 audiovec
 │   └── audiovec_model.pt  # Pre-trained PyTorch model
 ├── embeddings_2d.png      # 2D t-SNE embedding visualisation
 ├── embeddings_3d.html     # Interactive 3D t-SNE visualisation
-├── report.md              # Method comparison report
 └── doc.md                 # Detailed technical documentation
 ```
 
