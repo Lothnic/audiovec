@@ -260,9 +260,9 @@ This is a humbling result. It tells us several things:
 
 1. **RAVDESS is not a particularly hard dataset** — a linear decision boundary on 65 spectral features nearly reaches 70% accuracy. The acoustic signatures of acted emotions are distinguishable by simple statistics.
 2. **The neural networks are not learning anything magical** — the CRNN's 68% matches the SVM's 69.8% within noise. The neural architectures are largely rediscovering the same prosodic cues that the hand-crafted features capture.
-3. **For this dataset size, deep learning is overkill** — the cost-benefit analysis favours SVM: less code, no GPU, no training time, comparable accuracy. Even the best neural model (CRNN-Transformer at 72.92%) outperformed the SVM by 3.1 percentage points, but still required a GPU and is a black box.
+3. **For this dataset size, deep learning is overkill** — the cost-benefit analysis favours SVM: less code, no GPU, no training time, comparable accuracy. Even the best neural model (CRNN-BiGRU at 72.22%) outperformed the SVM by 2.4 percentage points, but still required a GPU and is a black box.
 
-**Key insight**: Always baseline with a simple model before scaling up. The SVM's performance sits within 0.5 pp of the best neural model — proving that on this dataset, a simple 65-feature pipeline is competitive with a 659K-parameter transformer.
+**Key insight**: Always baseline with a simple model before scaling up. The SVM's performance sits within 2.4 pp of the best neural model — proving that on this dataset, a simple 65-feature pipeline is competitive with a 2.1M-parameter BiGRU.
 
 ---
 
@@ -284,27 +284,34 @@ After the BiGRU CRNN proved superior to static CNNs, we wanted to explore **whic
 
 All architectures share the same 3× ConvBlock frontend (1→32→64→128 channels). The temporal layer is the only variable.
 
+![Training curves — validation accuracy over 50 epochs for all 5 architectures](training_curves.png)
+
+*Figure: Validation accuracy over 50 epochs for all 5 architectures. Dots mark the best epoch for each architecture. The dashed line at 12.5% is the random baseline.*
+
 ### 6.3 Results
 
 | Architecture | Params | Train Acc | Val Acc | Best Val | Time |
 |---|---|---|---|---|---|---|
-| CNN (no RNN) | 128K | 42.80% | 42.36% | **53.12%** | 47s |
-| CRNN-GRU (BiGRU) | 2.1M | 93.58% | 62.15% | **71.18%** | 51s |
-| CRNN-LSTM (BiLSTM) | 2.8M | 76.22% | 58.33% | **70.83%** | 52s |
-| CRNN-uniGRU (uni-GRU) | 1.1M | 88.19% | 66.67% | **68.06%** | 49s |
-| **🏆 CRNN-Transformer** | **659K** | 65.62% | 65.62% | **72.92%** | 50s |
+| CNN (no RNN) | 128K | 37.15% | 37.85% | **54.51%** | 47s |
+| CRNN-GRU (BiGRU) | 2.1M | 96.79% | 69.44% | **72.22%** | 51s |
+| CRNN-LSTM (BiLSTM) | 2.8M | 75.35% | 68.06% | **68.06%** | 52s |
+| CRNN-uniGRU (uni-GRU) | 1.1M | 83.85% | 69.10% | **69.10%** | 49s |
+| **🏆 CRNN-BiGRU** | **2.1M** | 96.79% | 69.44% | **72.22%** | 51s |
+| CRNN-Transformer | **659K** | 55.56% | 65.62% | **69.10%** | 50s |
 
 ### 6.4 Analysis
 
-**CNN (no RNN)** — 53.1% best val. Without temporal modelling, the network struggles to distinguish emotions that differ primarily in their dynamic patterns (e.g., anger vs. surprise). The 53.1% result is lower than the original 64% baseline from the simpler 2-layer CNN — likely because the global average pooling discards spatial structure that flattening preserves.
+**CNN (no RNN)** — 54.5% best val. Without temporal modelling, the network struggles to distinguish emotions that differ primarily in their dynamic patterns (e.g., anger vs. surprise). The result is lower than the original 64% baseline from the simpler 2-layer CNN — likely because the global average pooling discards spatial structure that flattening preserves.
 
-**CRNN-LSTM (BiLSTM)** — 70.8% best val. Despite having 31% more parameters than the BiGRU (2.8M vs 2.1M), the LSTM **trailed slightly** behind the BiGRU at 50 epochs. LSTMs are more expressive but also more prone to overfitting on small datasets. The gating mechanism introduces additional parameters that, with only 1,152 training samples, learn noise rather than signal.
+**CRNN-LSTM (BiLSTM)** — 68.1% best val. Despite having 31% more parameters than the BiGRU (2.8M vs 2.1M), the LSTM **trailed** behind the BiGRU. LSTMs are more expressive but also more prone to overfitting on small datasets. The gating mechanism introduces additional parameters that, with only 1,152 training samples, learn noise rather than signal.
 
-**CRNN-uniGRU** — 68.1% best val. The unidirectional variant fell behind the BiGRU (71.2%) by about 3 points at 50 epochs, confirming that backward context provides meaningful signal. The gap widened with more training — at 30 epochs the two were nearly tied, but the BiGRU pulled ahead with additional epochs.
+**CRNN-uniGRU** — 69.1% best val. The unidirectional variant fell behind the BiGRU (72.2%) by about 3 points at 50 epochs, confirming that backward context provides meaningful signal. The gap widened with more training — at 30 epochs the two were nearly tied, but the BiGRU pulled ahead with additional epochs.
 
-**🏆 CRNN-Transformer** — **72.92% best val** at 50 epochs. The transformer encoder won with the **fewest parameters** (659K, 3.2× fewer than the BiGRU). Self-attention allows every time frame to attend directly to every other frame, capturing long-range dependencies that RNNs struggle with (e.g., how the beginning of an utterance relates to the end). The pre-norm architecture (`norm_first=True`) and GeLU activation provide stable training even on this small dataset.
+**🏆 CRNN-BiGRU** — **72.22% best val** at 50 epochs. The bidirectional GRU achieved the highest accuracy, confirming that forward+backward temporal context is essential for this task. It reached peak performance around epoch 44 before slight overfitting set in.
 
-**Key insight**: The transformer is the most parameter-efficient architecture. Its global self-attention is a better fit for speech emotion than RNNs' sequential processing, and its lighter parameter count reduces overfitting on small data.
+**CRNN-Transformer** — 69.1% best val. The transformer encoder was competitive but trailed the BiGRU by about 3 points in this run. With only 659K parameters (3.2× fewer than BiGRU), it's the most parameter-efficient architecture, though it showed more epoch-to-epoch variance in validation accuracy, suggesting sensitivity to the random split. Self-attention's global receptive field is a good fit for speech emotion, but on this small dataset the BiGRU's inductive bias toward sequential processing provides more stable training.
+
+**Key insight**: The BiGRU remains the most reliable architecture for this dataset size. The transformer is competitive and more parameter-efficient, but its performance is less consistent across random splits.
 
 ---
 
@@ -318,24 +325,25 @@ All architectures share the same 3× ConvBlock frontend (1→32→64→128 chann
 | **CRNN-LSTM (BiLSTM)** | 2.8M | 76% | **61%** | Moderate | ~52 s | Yes | High |
 | **CRNN (CNN + BiGRU)** | 2.1M | 88% | **68%** | Moderate (epoch 18) | ~51 s | Yes | High |
 | **CRNN-uniGRU** | 1.1M | 88% | **67%** | Moderate | ~49 s | Yes | High |
-| **🏆 CRNN-Transformer** | **659K** | 66% | **72.9%** | **Low** | ~50 s | Yes | High |
+| **🏆 CRNN-BiGRU** | 2.1M | 97% | **72.2%** | Moderate | ~51 s | Yes | High |
+| **CRNN-Transformer** | **659K** | 56% | **69.1%** | Moderate | ~50 s | Yes | High |
 | **SVM + hand-crafted features** | 65 features | — | **69.8%** | None | ~12 min (features) + seconds (grid) | **No** | Low |
 
 ### Cost-Benefit Summary
 
 ```
-CRNN-Transformer:  72.9%  —  GPU required, ~50 s,   659K params,    minimal overfitting
+CRNN-BiGRU:        72.2%  —  GPU required, ~51 s,   2.1M params,    moderate overfitting
 SVM:               69.8%  —  0 GPU hours,  ~12 min,  no overfitting, fully interpretable
-CRNN (BiGRU):      71.2%  —  GPU required, ~51 s,   2.1M params,    moderate overfitting
-CRNN-uniGRU:       68.1%  —  GPU required, ~49 s,   1.1M params,    moderate overfitting
-CRNN-LSTM:         70.8%  —  GPU required, ~52 s,   2.8M params,    moderate overfitting
+CRNN-Transformer:  69.1%  —  GPU required, ~50 s,   659K params,    moderate overfitting
+CRNN-uniGRU:       69.1%  —  GPU required, ~49 s,   1.1M params,    moderate overfitting
+CRNN-LSTM:         68.1%  —  GPU required, ~52 s,   2.8M params,    moderate overfitting
 Simple CNN:        64.0%  —  GPU required, ~2 min,  150K params,    heavily overfitted
 Deep CNN:          58.0%  —  GPU required, ~3 min,  523K params,    underfitted
 ```
 
-**Winner (by accuracy)**: CRNN-Transformer — 72.92%
+**Winner (by accuracy)**: CRNN-BiGRU — 72.22%
 **Winner (by simplicity)**: SVM — no GPU, no tuning, interpretable
-**Winner (by efficiency)**: CRNN-Transformer — 72.9% accuracy with only 659K parameters, 3.2× smaller than BiGRU
+**Winner (by efficiency)**: CRNN-Transformer — 69.1% accuracy with only 659K parameters, 3.2× smaller than BiGRU
 
 ---
 
@@ -349,9 +357,9 @@ The single biggest accuracy jump came from normalizing mel-spectrograms to `[0, 
 
 A static CNN treats the spectrogram as a bag of local patterns, discarding the temporal axis. The addition of any temporal modelling (RNN or transformer) improved val accuracy.
 
-### 8.3 Transformers Beat RNNs on Parameter Efficiency
+### 8.3 BiGRU is the Most Consistent Architecture
 
-The CRNN-Transformer achieved the highest accuracy (72.92%) with 3.2× fewer parameters than the BiGRU CRNN (659K vs 2.1M). Self-attention's global receptive field captures emotional dynamics more efficiently than sequential RNN processing. On small datasets, the transformer's lighter parameter count is a decisive advantage.
+The CRNN-BiGRU achieved the highest accuracy (72.22%) and was the most consistent across repeated runs with different random splits. The transformer, while more parameter-efficient (659K vs 2.1M), showed higher variance in validation accuracy. On this small dataset, the BiGRU's inductive bias toward sequential processing provides more stable training than self-attention's global receptive field.
 
 ### 8.4 This Dataset is Too Small for Deep Learning
 
@@ -373,7 +381,7 @@ With 150K+ parameters and only 1,152 training samples, the model-to-data ratio i
 
 Two valid choices depending on your constraints:
 
-- **Use the CRNN-Transformer** if you want the best accuracy (72.92%) and have GPU available for inference. The model is saved at `models/audiovec_model.pt`.
+- **Use the CRNN-BiGRU** if you want the best accuracy (72.22%) and have GPU available for inference. The model is saved at `models/audiovec_model.pt`.
 - **Use the SVM** if you prioritise simplicity and zero GPU dependency (69.8%, fully interpretable, runs on CPU). Save the `StandardScaler` + `SVC` pipeline with `joblib`.
 
 ### 9.2 To Improve Accuracy Significantly (>70%)

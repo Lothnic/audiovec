@@ -15,6 +15,7 @@ Usage:
 
 from __future__ import annotations
 
+import json
 import os
 import time
 from pathlib import Path
@@ -383,8 +384,9 @@ def train_one_architecture(
     X: np.ndarray,
     y_enc: np.ndarray,
     num_classes: int,
-) -> tuple[dict, nn.Module]:
-    """Train a single architecture and return (metrics_dict, trained_model)."""
+) -> tuple[dict, nn.Module, list[dict]]:
+    """Train a single architecture and return (metrics_dict, trained_model, epoch_history)."""
+    epoch_history: list[dict] = []
     print(f"\n{'═' * 60}")
     print(f"  {name}")
     print(f"{'═' * 60}")
@@ -440,6 +442,14 @@ def train_one_architecture(
         va_acc = va_correct / va_total
         best_val_acc = max(best_val_acc, va_acc)
 
+        epoch_history.append({
+            "epoch": epoch,
+            "train_loss": round(tr_loss / tr_total, 4),
+            "train_acc": round(tr_acc, 4),
+            "val_loss": round(va_loss / va_total, 4),
+            "val_acc": round(va_acc, 4),
+        })
+
         print(
             f"    Epoch {epoch:3d}/{EPOCHS}  "
             f"train_loss={tr_loss/tr_total:.4f}  train_acc={tr_acc:.4f}  "
@@ -459,7 +469,7 @@ def train_one_architecture(
         "val_acc": round(va_correct / va_total, 4),
         "best_val_acc": round(best_val_acc, 4),
     }
-    return metrics, model
+    return metrics, model, epoch_history
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -488,15 +498,23 @@ def main() -> None:
 
     safename = lambda n: n.split("(")[0].strip().replace(" ", "_").replace("/", "_").lower()
     results: list[dict] = []
+    all_history: dict[str, list[dict]] = {}
     for name, factory in architectures:
-        result, model = train_one_architecture(name, factory, X, y_enc, num_classes)
+        result, model, history = train_one_architecture(name, factory, X, y_enc, num_classes)
         results.append(result)
+        all_history[name] = history
 
         # Save trained model
         model_path = Path("models") / f"{safename(name)}.pt"
         model_path.parent.mkdir(exist_ok=True)
         torch.save(model.state_dict(), model_path)
         print(f"  Saved -> {model_path}")
+
+    # Save per-epoch history for training curve plots
+    history_path = Path("models") / "comparison_history.json"
+    with open(history_path, "w") as f:
+        json.dump({"epochs": EPOCHS, "architectures": all_history}, f, indent=2)
+    print(f"\n  Saved per-epoch history -> {history_path}")
 
     # ── Summary table ──
     print(f"\n{'═' * 83}")
@@ -517,6 +535,66 @@ def main() -> None:
     print(f"\n  🏆  Best architecture: {best['name']}  (best val acc: {best['best_val_acc']:.4f})")
 
     print("\nDone.")
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  Plot training curves from saved JSON
+# ═══════════════════════════════════════════════════════════════════════
+
+def plot_training_curves(history_path: str | Path = "models/comparison_history.json",
+                         output_path: str | Path = "training_curves.png") -> None:
+    """Load per-epoch history JSON and plot val_acc curves for all architectures."""
+    import json
+    import matplotlib.pyplot as plt
+    with open(history_path) as f:
+        data = json.load(f)
+
+    arch_data = data["architectures"]
+    colors = ["#A78BFA", "#60A5FA", "#34D399", "#FBBF24", "#F87171"]
+
+    fig, ax = plt.subplots(figsize=(12, 6))
+    fig.patch.set_facecolor("#0B0E14")
+    ax.set_facecolor("#0B0E14")
+
+    epochs = list(range(1, data["epochs"] + 1))
+    for (name, history), color in zip(arch_data.items(), colors):
+        val_accs = [h["val_acc"] for h in history]
+        label = f"{name}  ({max(val_accs):.1%} best)"
+        ax.plot(epochs, val_accs, color=color, linewidth=1.8, label=label, alpha=0.9)
+        # mark best epoch
+        best_epoch = np.argmax(val_accs)
+        ax.scatter(best_epoch + 1, val_accs[best_epoch], color=color, s=60, zorder=5,
+                   edgecolors="white", linewidth=0.8)
+
+    ax.set_xlabel("Epoch", color="#8B95A8", fontsize=10)
+    ax.set_ylabel("Validation Accuracy", color="#8B95A8", fontsize=10)
+    ax.set_title("Training Curves — 5 Architectures at 50 Epochs",
+                 color="#E2E8F0", fontsize=13, fontweight="bold", pad=12)
+    ax.tick_params(colors="#8B95A8", labelsize=9)
+    ax.set_ylim(0, 1.0)
+    ax.set_xlim(1, data["epochs"])
+    ax.legend(frameon=False, fontsize=9, labelcolor="#CBD5E1",
+              loc="lower right", ncols=1)
+    ax.grid(True, alpha=0.08, color="#8B95A8")
+    for spine in ax.spines.values():
+        spine.set_color("#1E293B")
+
+    # Add horizontal dashed line at 12.5% random baseline
+    ax.axhline(y=0.125, color="#475569", linestyle="--", linewidth=1, alpha=0.6)
+    ax.text(data["epochs"] + 0.5, 0.125, "random", color="#475569", fontsize=8, va="bottom")
+
+    fig.tight_layout(pad=1.5)
+    fig.savefig(output_path, dpi=150, facecolor="#0B0E14")
+    print(f"Saved training curves -> {output_path}")
+    plt.show()
+
+
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "--plot":
+        plot_training_curves()
+    else:
+        main()
 
 
 if __name__ == "__main__":
