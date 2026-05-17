@@ -1,0 +1,47 @@
+# ── Python ───────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# ── Virtual environment ─────────────────────────────────────────────
+.env
+.venv/
+venv/
+
+# ── OS files ────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── IDE / editor ────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.python-version
+
+# ── Trained model files (saved to models/) ─────────────────────────
+# Track only the primary audiovec_model.pt; ignore backups & other arch checkpoints
+models/*.pt.*
+models/cnn.pt
+models/crnn-gru.pt
+models/crnn-lstm.pt
+models/crnn-unigru.pt
+models/crnn-transformer.pt
+
+# ── Generated visualizations ────────────────────────────────────────
+embeddings_2d.png
+embeddings_3d.html
+
+# ── Old notes / docs ────────────────────────────────────────────────
+doc.md
+space_gitignore
+
+# ── Dataset artifacts (ignore raw data, keep only extraction scripts) ─
+ravdess-emotional-speech-audio.zip
+audio_speech_actors_01-24/
+ravdess/
