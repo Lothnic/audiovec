@@ -33,9 +33,6 @@ models/crnn-lstm.pt
 models/crnn-unigru.pt
 models/crnn-transformer.pt
 
-# ── Generated visualizations ────────────────────────────────────────
-embeddings_2d.png
-embeddings_3d.html
 
 # ── Old notes / docs ────────────────────────────────────────────────
 doc.md
