@@ -127,6 +127,22 @@ Edit constants at the top of `train_crnn.py` to adjust data dir, epochs, batch s
 
 For a classical ML comparison, the SVM baseline is available in `audiovec/svm_baseline.py` and can be run programmatically.
 
+### Pretrained Model
+
+The model is hosted on Hugging Face Hub for easy download:
+
+```
+# Download from Hugging Face
+wget https://huggingface.co/lothnic/audiovec/resolve/main/models/audiovec_model.pt -O models/audiovec_model.pt
+```
+
+Or directly from Python:
+```python
+from huggingface_hub import hf_hub_download
+
+model_path = hf_hub_download(repo_id="lothnic/audiovec", filename="models/audiovec_model.pt")
+```
+
 ### Inference Programmatically
 
 ```python
@@ -137,6 +153,21 @@ print(result["emotion"])      # "happy"
 print(result["confidence"])   # 0.87
 print(result["embedding"])    # 256-d numpy array
 ```
+
+#### Inference Examples
+
+On a held-out sample from Actor 21 (unseen during training), the model achieves **8/8** correct predictions:
+
+| Ground Truth | Predicted | Confidence | Top-3 Distribution |
+|---|---|---|---|
+| Neutral | neutral | 98% | neutral 98% > happy 2% > angry 0% |
+| Calm | calm | 100% | calm 100% > neutral 0% > angry 0% |
+| Happy | happy | 100% | happy 100% > neutral 0% > angry 0% |
+| Sad | sad | 80% | sad 80% > disgust 17% > calm 2% |
+| Angry | angry | 100% | angry 100% > disgust 0% > happy 0% |
+| Fearful | fearful | 96% | fearful 96% > surprised 2% > disgust 1% |
+| Disgust | disgust | 100% | disgust 100% > angry 0% > surprised 0% |
+| Surprised | surprised | 98% | surprised 98% > fearful 2% > happy 0% |
 
 ### Docker
 

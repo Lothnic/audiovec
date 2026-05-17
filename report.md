@@ -406,3 +406,22 @@ The project supports multiple model paths — an important architectural lesson 
 - `audiovec/svm_baseline.py` — trains the SVM (classical ML path, run programmatically)
 
 The key: always think critically about whether your problem **needs** a neural network before building one, and always benchmark several architectural families before committing.
+
+### 9.4 Inference Examples
+
+To validate the model after training, we ran inference on 8 samples from Actor 21 (a held-out actor) — one per emotion. The model achieved **100% accuracy** on this small probe set:
+
+| Ground Truth | Predicted | Confidence | Top-3 Distribution |
+|---|---|---|---|
+| Neutral | neutral | 98% | neutral 98% > happy 2% > angry 0% |
+| Calm | calm | 100% | calm 100% > neutral 0% > angry 0% |
+| Happy | happy | 100% | happy 100% > neutral 0% > angry 0% |
+| Sad | sad | 80% | sad 80% > disgust 17% > calm 2% |
+| Angry | angry | 100% | angry 100% > disgust 0% > happy 0% |
+| Fearful | fearful | 96% | fearful 96% > surprised 2% > disgust 1% |
+| Disgust | disgust | 100% | disgust 100% > angry 0% > surprised 0% |
+| Surprised | surprised | 98% | surprised 98% > fearful 2% > happy 0% |
+
+Confidence is high across the board (80–100%). The model is most decisive on calm, happy, angry, and disgust (all 100%), and most cautious on sad (80% — 17% mapped to disgust, likely due to shared low-arousal spectral characteristics).
+
+These samples are from the same data distribution as the training set, so these numbers are upper-bound estimates of accuracy on this specific dataset. Real-world speech with background noise, different microphones, and emotional naturalness will likely be harder.
