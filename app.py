@@ -10,6 +10,7 @@ from __future__ import annotations
 import io
 import json
 import os
+import subprocess
 import tempfile
 import traceback
 from pathlib import Path
@@ -257,40 +258,98 @@ model = _load_model()
 
 uploaded = st.file_uploader(
     "Drop your audio file here",
-    type=["wav", "mp3", "m4a", "ogg", "flac"],
+    type=["wav", "mp3", "m4a", "ogg", "flac", "mp4"],
     label_visibility="collapsed",
 )
 
 if not uploaded:
     # Show a placeholder prompt
     st.info(
-        "Upload a **.wav** or **.mp3** audio file to get started.\n\n"
-        "Supported formats: WAV, MP3, M4A, OGG, FLAC",
+        "Upload an **audio** or **video** file to get started.\n\n"
+        "Supported formats: WAV, MP3, M4A, OGG, FLAC, MP4 (audio extracted via ffmpeg)",
         icon="🎤",
     )
     st.stop()
 
 # -- Process audio ------------------------------------------------------------
 
-with st.spinner("Processing audio..."):
-    try:
-        # Read the uploaded file into a bytes buffer
-        audio_bytes = uploaded.read()
-        audio_buffer = io.BytesIO(audio_bytes)
+specific_error_shown = False
+try:
+    audio_bytes = uploaded.read()
+    is_mp4 = uploaded.name.lower().endswith(".mp4")
+    audio_wav_path = None
 
-        # Load audio with librosa for the waveform & spectrogram
-        audio, sr = librosa.load(audio_buffer, sr=SAMPLE_RATE)
-
-        # Reset buffer position for our processing function
-        audio_buffer.seek(0)
-
-        # Process through our pipeline -- save to temp file since
-        # load_and_process_audio expects a file path
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+    if is_mp4:
+        # Save MP4 to temp file for probing
+        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
             tmp.write(audio_bytes)
-            tmp_path = tmp.name
+            video_path = tmp.name
 
+        # Check for audio stream before showing any progress widget
+        probe = subprocess.run(
+            ["ffprobe", "-v", "error", "-select_streams", "a:0",
+             "-show_entries", "stream=codec_type", "-of", "csv=p=0",
+             video_path],
+            capture_output=True,
+            text=True,
+        )
+        if not probe.stdout.strip():
+            os.unlink(video_path)
+            st.error(
+                "This video file contains **no audio track**."
+                " Please upload a video with an audible speech signal, or upload an audio file directly "
+                "(WAV, MP3, M4A, OGG, FLAC)."
+            )
+            specific_error_shown = True
+            st.stop()
 
+        # Phase 1 — ffmpeg audio extraction (now we know audio exists)
+        with st.status("Extracting audio from video…", expanded=False) as status:
+            try:
+                with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+                    audio_wav_path = tmp.name
+
+                try:
+                    subprocess.run(
+                        [
+                            "ffmpeg", "-y", "-i", video_path,
+                            "-vn", "-acodec", "pcm_s16le",
+                            "-ar", str(SAMPLE_RATE), "-ac", "1",
+                            audio_wav_path,
+                        ],
+                        capture_output=True,
+                        check=True,
+                    )
+                finally:
+                    os.unlink(video_path)
+
+                status.update(label="Audio extracted ✓", state="complete")
+            except Exception:
+                status.update(state="error")
+                raise
+
+        # Load audio from extracted WAV
+        audio, sr = librosa.load(audio_wav_path, sr=SAMPLE_RATE)
+        tmp_path = audio_wav_path
+    else:
+        # Phase 1 — load audio file
+        with st.status("Loading audio file…", expanded=False) as status:
+            try:
+                audio_buffer = io.BytesIO(audio_bytes)
+                audio, sr = librosa.load(audio_buffer, sr=SAMPLE_RATE)
+
+                # Save to temp WAV for load_and_process_audio
+                with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+                    tmp.write(audio_bytes)
+                    tmp_path = tmp.name
+
+                status.update(label=f"Loaded {len(audio)/sr:.1f}s audio ✓", state="complete")
+            except Exception:
+                status.update(state="error")
+                raise
+
+    # Phase 2 — model inference (simple spinner since it's fast)
+    with st.spinner("Running inference…"):
         try:
             spectrogram = load_and_process_audio(tmp_path, max_pad_len=MAX_PAD_LEN)
             emotion, confidence, probs = predict_emotion(model, spectrogram)
@@ -300,10 +359,17 @@ with st.spinner("Processing audio..."):
                 os.unlink(tmp_path)
             except Exception:
                 pass
-    except Exception as e:
+except Exception as e:
+    # Clean up audio_wav_path if it was created but never reached the spinner's cleanup
+    if audio_wav_path is not None:
+        try:
+            os.unlink(audio_wav_path)
+        except Exception:
+            pass
+    if not specific_error_shown:
         st.error(f"Failed to process audio: {e}")
         st.exception(e)
-        st.stop()
+    st.stop()
 
 # -- Results layout -----------------------------------------------------------
 
@@ -323,14 +389,12 @@ with col3:
 
 st.markdown('<div class="section-title">Audio Playback</div>', unsafe_allow_html=True)
 
-# Determine the MIME type based on the file extension
-audio_ext = uploaded.name.rsplit(".", 1)[-1].lower()
-mime_map = {"wav": "audio/wav", "mp3": "audio/mpeg", "m4a": "audio/mp4", "ogg": "audio/ogg", "flac": "audio/flac"}
-audio_mime = mime_map.get(audio_ext, "audio/wav")
+# Play the waveform array directly -- works for all formats including MP4 (audio extracted via ffmpeg)
+st.audio(audio, sample_rate=sr)
 
-st.audio(audio_bytes, format=audio_mime)
-
-st.caption(f"File: {uploaded.name}  .  {len(audio)/sr:.1f}s  .  {audio_ext.upper()}")
+file_ext = uploaded.name.rsplit(".", 1)[-1].lower()
+edit_suffix = " (audio extracted)" if file_ext == "mp4" else ""
+st.caption(f"File: {uploaded.name}  .  {len(audio)/sr:.1f}s  .  {file_ext.upper()}{edit_suffix}")
 
 # -- Emotion probability bars -------------------------------------------------
 
