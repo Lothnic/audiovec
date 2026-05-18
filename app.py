@@ -101,18 +101,19 @@ st.markdown(
     }
 
     /* -- File uploader --------------------------------------------------- */
-    section[data-testid="stFileUploader"] {
+    /* Upload column */
+    [data-testid="column"]:first-child section[data-testid="stFileUploader"] {
         background: #141A24;
         border: 2px dashed #2A3A4E;
         border-radius: 16px;
         padding: 2rem 1rem;
         transition: border-color 0.3s, background 0.3s;
     }
-    section[data-testid="stFileUploader"]:hover {
+    [data-testid="column"]:first-child section[data-testid="stFileUploader"]:hover {
         border-color: #A78BFA;
         background: #1A212D;
     }
-    section[data-testid="stFileUploader"] button {
+    [data-testid="column"]:first-child section[data-testid="stFileUploader"] button {
         background: #A78BFA !important;
         color: #0B0E14 !important;
         font-weight: 600;
@@ -120,8 +121,35 @@ st.markdown(
         border-radius: 8px !important;
         padding: 0.4rem 1.2rem !important;
     }
-    section[data-testid="stFileUploader"] button:hover {
+    [data-testid="column"]:first-child section[data-testid="stFileUploader"] button:hover {
         background: #C4B5FD !important;
+    }
+
+    /* -- Mic widget ------------------------------------------------------ */
+    [data-testid="column"]:last-child [data-testid="stAudioInput"] {
+        background: #141A24;
+        border: 2px dashed #2A3A4E;
+        border-radius: 16px;
+        padding: 0.5rem 1rem;
+        transition: border-color 0.3s, background 0.3s;
+    }
+    [data-testid="column"]:last-child [data-testid="stAudioInput"]:hover {
+        border-color: #A78BFA;
+        background: #1A212D;
+    }
+    [data-testid="column"]:last-child [data-testid="stAudioInput"] button {
+        background: #A78BFA !important;
+        color: #0B0E14 !important;
+        font-weight: 600;
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 0.4rem 1.2rem !important;
+    }
+    [data-testid="column"]:last-child [data-testid="stAudioInput"] button:hover {
+        background: #C4B5FD !important;
+    }
+    [data-testid="column"]:last-child [data-testid="stAudioInput"] svg {
+        color: #C4B5FD !important;
     }
 
     /* -- Progress bars --------------------------------------------------- */
@@ -333,29 +361,42 @@ def _load_ravdess_embeddings():
     return load_ravdess_embeddings()
 
 
-# -- Upload -------------------------------------------------------------------
+# -- Upload / Record ----------------------------------------------------------
 
-uploaded = st.file_uploader(
-    "Drop your audio file here",
-    type=["wav", "mp3", "m4a", "ogg", "flac", "mp4"],
-    label_visibility="collapsed",
-)
+col_upload, col_mic = st.columns(2, gap="large")
 
-if not uploaded:
-    # Show a placeholder prompt
+with col_upload:
+    uploaded = st.file_uploader(
+        "Upload audio file",
+        type=["wav", "mp3", "m4a", "ogg", "flac", "mp4"],
+        label_visibility="collapsed",
+    )
+
+with col_mic:
+    recorded = st.audio_input(
+        "Record from microphone",
+        sample_rate=SAMPLE_RATE,
+        label_visibility="collapsed",
+    )
+
+if not uploaded and not recorded:
     st.info(
-        "Upload an **audio** or **video** file to get started.\n\n"
+        "Upload an **audio** or **video** file, or record directly with your microphone.\n\n"
         "Supported formats: WAV, MP3, M4A, OGG, FLAC, MP4 (audio extracted via ffmpeg)",
         icon="🎤",
     )
     st.stop()
 
+# Determine which source to use
+is_mic = recorded is not None
+source = recorded if is_mic else uploaded
+
 # -- Process audio ------------------------------------------------------------
 
 specific_error_shown = False
 try:
-    audio_bytes = uploaded.read()
-    is_mp4 = uploaded.name.lower().endswith(".mp4")
+    audio_bytes = source.read()
+    is_mp4 = not is_mic and source.name.lower().endswith(".mp4")
     audio_wav_path = None
 
     if is_mp4:
@@ -412,7 +453,7 @@ try:
         tmp_path = audio_wav_path
     else:
         # Phase 1 — load audio file
-        with st.status("Loading audio file…", expanded=False) as status:
+        with st.status("Loading audio…", expanded=False) as status:
             try:
                 audio_buffer = io.BytesIO(audio_bytes)
                 audio, sr = librosa.load(audio_buffer, sr=SAMPLE_RATE)
@@ -422,7 +463,11 @@ try:
                     tmp.write(audio_bytes)
                     tmp_path = tmp.name
 
-                status.update(label=f"Loaded {len(audio)/sr:.1f}s audio ✓", state="complete")
+                source_label = "Microphone" if is_mic else uploaded.name
+                status.update(
+                    label=f"Loaded {len(audio)/sr:.1f}s audio ✓  ({source_label})",
+                    state="complete",
+                )
             except Exception:
                 status.update(state="error")
                 raise
@@ -471,9 +516,14 @@ st.markdown('<div class="section-title">Audio Playback</div>', unsafe_allow_html
 # Play the waveform array directly -- works for all formats including MP4 (audio extracted via ffmpeg)
 st.audio(audio, sample_rate=sr)
 
-file_ext = uploaded.name.rsplit(".", 1)[-1].lower()
+if is_mic:
+    file_ext = "wav"
+    source_label = "Microphone recording"
+else:
+    file_ext = uploaded.name.rsplit(".", 1)[-1].lower()
+    source_label = uploaded.name
 edit_suffix = " (audio extracted)" if file_ext == "mp4" else ""
-st.caption(f"File: {uploaded.name}  .  {len(audio)/sr:.1f}s  .  {file_ext.upper()}{edit_suffix}")
+st.caption(f"Source: {source_label}  .  {len(audio)/sr:.1f}s  .  {file_ext.upper()}{edit_suffix}")
 
 # -- Emotion probability bars -------------------------------------------------
 
@@ -636,7 +686,7 @@ ax_spec.set_xlabel("Time frames", color="#8B95A8", fontsize=8)
 ax_spec.set_ylabel("Mel bands", color="#8B95A8", fontsize=8)
 ax_spec.tick_params(colors="#8B95A8", labelsize=7)
 ax_spec.set_title(
-    f"Spectrogram -- {uploaded.name} ({len(audio)/sr:.1f}s @ {sr} Hz)",
+    f"Spectrogram ({len(audio)/sr:.1f}s @ {sr} Hz)",
     color="#CBD5E1",
     fontsize=10,
     pad=8,
