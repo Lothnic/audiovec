@@ -517,17 +517,22 @@ if duration > DURATION_THRESHOLD:
         )
         st.pyplot(fig_curves, width="stretch")
 
-        # Mark the segment with strongest prediction
+        # Emotion flow — collapse consecutive duplicates
         dominant = result["probs"].argmax(axis=1)
-        top_emoji = ["😐", "😌", "😊", "😢", "😡", "😰", "🤢", "😲"]
         segments = []
-        for i, idx in enumerate(dominant):
+        i = 0
+        while i < len(dominant):
+            idx = int(dominant[i])
             label = result["emotion_labels"][idx]
-            seg = f"{i+1}. {top_emoji[idx]}{label}"
-            if i < len(dominant) - 1:
-                seg += " → "
+            count = 1
+            while i + count < len(dominant) and int(dominant[i + count]) == idx:
+                count += 1
+            seg = label
+            if count > 1:
+                seg += f" (×{count})"
             segments.append(seg)
-        st.caption("Emotion flow: " + "".join(segments))
+            i += count
+        st.caption("Emotion flow: " + " → ".join(segments))
     else:
         st.caption(
             "Audio is not long enough for meaningful sliding-window analysis. "
