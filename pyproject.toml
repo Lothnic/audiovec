@@ -12,8 +12,10 @@ dependencies = [
     "matplotlib>=3.7",
     "plotly>=5.15",
     "tqdm>=4.65",
-    "kaleido>=0.2",   # required by plotly for static image export
-    "streamlit>=1.28",  # frontend UI
+    "kaleido>=0.2", # required by plotly for static image export
+    "streamlit>=1.28", # frontend UI
+    "onnxruntime>=1.15,<1.19",
+    "onnxscript>=0.7.0",
 ]
 
 [tool.uv]
