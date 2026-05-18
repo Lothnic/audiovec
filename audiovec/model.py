@@ -228,7 +228,9 @@ class CRNNTransformer(nn.Module):
             batch_first=True,
             norm_first=True,  # pre-norm for stable training
         )
-        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+        self.transformer = nn.TransformerEncoder(
+            encoder_layer, num_layers=num_layers, enable_nested_tensor=False
+        )
         self.drop = nn.Dropout(dr[4]) if dr[4] > 0 else nn.Identity()
         self.fc_embed = nn.Linear(d_model, embedding_dim)
         self.fc_cls = nn.Linear(embedding_dim, num_classes)

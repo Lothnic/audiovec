@@ -267,6 +267,29 @@ st.markdown(
         border-top: 1px solid #1E293B;
     }
 
+    /* -- Emotion flow dots --------------------------------------------- */
+    .emotion-flow {
+        color: #94A3B8;
+        font-size: 0.85rem;
+        margin-top: 0.5rem;
+    }
+    .emotion-flow .flow-dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 3px;
+        vertical-align: middle;
+    }
+    .emotion-flow .flow-arrow {
+        color: #475569;
+        margin: 0 4px;
+    }
+    .emotion-flow .flow-count {
+        color: #64748B;
+        font-size: 0.78rem;
+    }
+
     /* -- Hide Streamlit branding ----------------------------------------- */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
@@ -517,7 +540,7 @@ if duration > DURATION_THRESHOLD:
         )
         st.pyplot(fig_curves, width="stretch")
 
-        # Emotion flow — collapse consecutive duplicates
+        # Emotion flow — collapse consecutive duplicates with colored dots
         dominant = result["probs"].argmax(axis=1)
         segments = []
         i = 0
@@ -527,12 +550,17 @@ if duration > DURATION_THRESHOLD:
             count = 1
             while i + count < len(dominant) and int(dominant[i + count]) == idx:
                 count += 1
-            seg = label
+            dot = f"<span class=\"flow-dot\" style=\"background:{colors[idx]};\"></span>"
+            seg = f"{dot}{label}"
             if count > 1:
-                seg += f" (×{count})"
+                seg += f" <span class=\"flow-count\">(×{count})</span>"
             segments.append(seg)
             i += count
-        st.caption("Emotion flow: " + " → ".join(segments))
+        flow_html = "<span class=\"flow-arrow\">→</span>".join(segments)
+        st.markdown(
+            f"<div class=\"emotion-flow\">Emotion flow: {flow_html}</div>",
+            unsafe_allow_html=True,
+        )
     else:
         st.caption(
             "Audio is not long enough for meaningful sliding-window analysis. "
