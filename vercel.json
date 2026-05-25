@@ -1,8 +1,1 @@
-{
-  "rootDirectory": "web",
-  "functions": {
-    "api/predict/**": {
-      "includeFiles": "../models/crnn-transformer.onnx"
-    }
-  }
-}
+{}
