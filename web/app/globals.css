@@ -1,0 +1,548 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Base
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@layer base {
+  body {
+    @apply bg-surface text-text-primary font-mono antialiased;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% 0%, rgba(167, 139, 250, 0.06), transparent),
+      radial-gradient(ellipse 60% 40% at 80% 80%, rgba(236, 72, 153, 0.04), transparent);
+    background-attachment: fixed;
+    min-height: 100dvh;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Glass Card
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.glass-card {
+  @apply relative rounded-xl border border-surface-border overflow-hidden;
+  background: rgba(20, 26, 36, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.glass-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    rgba(167, 139, 250, 0.08) 0%,
+    rgba(236, 72, 153, 0.04) 50%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Section Headers
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.section-title {
+  @apply flex items-center gap-2 text-sm font-semibold text-text-secondary
+         uppercase tracking-wider pb-3;
+  letter-spacing: 0.08em;
+}
+
+.section-title::before {
+  content: '';
+  @apply w-1 h-4 rounded-full shrink-0;
+  background: linear-gradient(to bottom, theme('colors.accent.purple'), theme('colors.accent.pink'));
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Upload Zone
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.upload-zone {
+  @apply relative rounded-2xl p-8 sm:p-12 text-center cursor-pointer
+         transition-all duration-500 ease-out overflow-hidden;
+  border: 1.5px dashed theme('colors.surface.border');
+  background: rgba(20, 26, 36, 0.4);
+}
+
+.upload-zone::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    rgba(167, 139, 250, 0.15),
+    transparent 40%,
+    transparent 60%,
+    rgba(236, 72, 153, 0.1)
+  );
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  -webkit-mask-composite: xor;
+  padding: 1.5px;
+}
+
+.upload-zone:hover::before,
+.upload-zone.dragover::before {
+  opacity: 1;
+}
+
+.upload-zone:hover,
+.upload-zone.dragover {
+  border-color: theme('colors.accent.purple');
+  background: rgba(26, 33, 45, 0.6);
+  transform: scale(1.01);
+}
+
+.upload-zone.has-file {
+  border-style: solid;
+  border-color: rgba(167, 139, 250, 0.3);
+  background: rgba(26, 33, 45, 0.5);
+  padding: 1.5rem 2rem;
+}
+
+.upload-zone:active {
+  transform: scale(0.98);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Metric Cards Grid
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.metrics-grid {
+  @apply grid grid-cols-1 sm:grid-cols-3 gap-3;
+}
+
+.metric-card {
+  @apply relative rounded-xl p-4 text-center overflow-hidden;
+  background: rgba(20, 26, 36, 0.6);
+  border: 1px solid rgba(30, 41, 59, 0.6);
+  transition: all 0.3s ease;
+}
+
+.metric-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    rgba(167, 139, 250, 0.06) 0%,
+    transparent 50%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.metric-card:hover {
+  border-color: rgba(167, 139, 250, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(167, 139, 250, 0.08);
+}
+
+.metric-card:hover::after {
+  opacity: 1;
+}
+
+.metric-card .metric-label {
+  @apply text-[10px] text-text-muted uppercase tracking-[0.12em] font-semibold;
+}
+
+.metric-card .metric-value {
+  @apply text-xl sm:text-2xl font-bold mt-1.5 tracking-tight;
+}
+
+.metric-value.emotion-value {
+  background: linear-gradient(
+    135deg,
+    theme('colors.accent.purple'),
+    theme('colors.accent.pink')
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Confidence Ring
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.confidence-ring {
+  @apply relative flex items-center justify-center;
+}
+
+.confidence-ring svg {
+  transform: rotate(-90deg);
+}
+
+.confidence-ring .ring-bg {
+  fill: none;
+  stroke: rgba(30, 41, 59, 0.5);
+  stroke-width: 4;
+}
+
+.confidence-ring .ring-fg {
+  fill: none;
+  stroke-width: 4;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1.2s ease-out;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Emotion Bars
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.emotion-row {
+  @apply flex items-center gap-3 py-1.5;
+}
+
+.emotion-label {
+  @apply w-16 sm:w-20 text-right text-xs sm:text-sm text-text-secondary font-medium shrink-0;
+}
+
+.emotion-bar-bg {
+  @apply flex-1 h-4 sm:h-5 rounded-full overflow-hidden;
+  background: rgba(30, 41, 59, 0.4);
+}
+
+.emotion-bar-fill {
+  @apply h-full rounded-full;
+  transition: width 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 0 8px rgba(var(--bar-color, 167, 139, 250), 0.15);
+}
+
+.emotion-pct {
+  @apply w-10 sm:w-12 text-[11px] sm:text-xs text-text-dim tabular-nums text-right shrink-0 font-medium;
+  transition: color 0.3s ease;
+}
+
+.emotion-pct.active {
+  @apply text-accent-purple font-semibold;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Canvas Containers
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.canvas-wrap {
+  @apply rounded-xl overflow-hidden;
+  background: rgba(11, 14, 20, 0.6);
+  border: 1px solid rgba(30, 41, 59, 0.5);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Embedding Bar
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.embedding-bar {
+  @apply rounded-xl p-4;
+  background: rgba(11, 14, 20, 0.6);
+  border: 1px solid rgba(30, 41, 59, 0.5);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Audio Player
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+audio {
+  @apply w-full h-10 rounded-lg;
+}
+
+audio::-webkit-media-controls-panel {
+  background: theme('colors.surface.hover');
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Animations
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Fade + slide up — staggered */
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.slide-up {
+  animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Staggered delay classes */
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.10s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.20s; }
+.stagger-5 { animation-delay: 0.25s; }
+.stagger-6 { animation-delay: 0.30s; }
+.stagger-7 { animation-delay: 0.35s; }
+.stagger-8 { animation-delay: 0.40s; }
+
+/* Pulse glow for loading */
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+.pulse-glow {
+  animation: pulse-glow 1.5s ease-in-out infinite;
+}
+
+/* Gradient sweep for loading bar */
+@keyframes gradient-sweep {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.gradient-sweep {
+  background: linear-gradient(
+    90deg,
+    theme('colors.accent.purple'),
+    theme('colors.accent.pink'),
+    theme('colors.accent.amber'),
+    theme('colors.accent.purple')
+  );
+  background-size: 200% 100%;
+  animation: gradient-sweep 2s linear infinite;
+}
+
+/* Skeleton shimmer */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(30, 41, 59, 0.3) 25%,
+    rgba(167, 139, 250, 0.08) 50%,
+    rgba(30, 41, 59, 0.3) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+/* Status dot pulse */
+@keyframes dot-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(167, 139, 250, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(167, 139, 250, 0);
+  }
+}
+
+.status-dot {
+  @apply inline-block w-2 h-2 rounded-full;
+  animation: dot-pulse 2s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Scrollbar
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(30, 41, 59, 0.8);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.6);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Download Button
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.btn-download {
+  @apply relative w-full py-2.5 px-4 rounded-xl text-sm font-medium
+         transition-all duration-300 overflow-hidden;
+  background: linear-gradient(
+    135deg,
+    rgba(167, 139, 250, 0.12),
+    rgba(236, 72, 153, 0.08)
+  );
+  border: 1px solid rgba(167, 139, 250, 0.2);
+  color: theme('colors.accent.purple');
+}
+
+.btn-download::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(167, 139, 250, 0.08),
+    transparent
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.btn-download:hover {
+  border-color: rgba(167, 139, 250, 0.4);
+  box-shadow: 0 4px 20px rgba(167, 139, 250, 0.1);
+  transform: translateY(-1px);
+}
+
+.btn-download:hover::before {
+  opacity: 1;
+}
+
+.btn-download:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Error / Info Banners
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.banner-error {
+  @apply p-4 rounded-xl text-sm;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: rgba(248, 113, 113, 0.95);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Skeleton placeholder for results
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.skeleton-block {
+  @apply rounded-lg shimmer;
+  min-height: 1em;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Recorder — Record button, timer, level meter
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.recorder-bar {
+  @apply flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl
+         transition-all duration-300;
+  background: rgba(20, 26, 36, 0.5);
+  border: 1px solid rgba(30, 41, 59, 0.5);
+}
+
+.recorder-bar.recording {
+  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.04);
+}
+
+.recorder-bar.has-data {
+  border-color: rgba(167, 139, 250, 0.3);
+}
+
+.btn-record {
+  @apply relative flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12
+         rounded-full shrink-0 transition-all duration-300;
+  background: rgba(167, 139, 250, 0.12);
+  border: 1.5px solid rgba(167, 139, 250, 0.3);
+  color: theme('colors.accent.purple');
+}
+
+.btn-record:hover {
+  background: rgba(167, 139, 250, 0.2);
+  border-color: rgba(167, 139, 250, 0.5);
+  transform: scale(1.05);
+}
+
+.btn-record:active {
+  transform: scale(0.95);
+}
+
+.btn-record.recording {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #F87171;
+  animation: record-pulse 1.5s ease-in-out infinite;
+}
+
+.btn-record.recording:hover {
+  background: rgba(239, 68, 68, 0.25);
+}
+
+.btn-record:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+@keyframes record-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+  }
+}
+
+.recorder-info {
+  @apply flex-1 flex flex-col gap-0.5 min-w-0;
+}
+
+.recorder-label {
+  @apply text-xs text-text-muted uppercase tracking-wider font-medium;
+}
+
+.recorder-timer {
+  @apply text-base sm:text-lg font-bold tabular-nums text-text-primary;
+}
+
+.recorder-meter {
+  @apply w-full h-1 rounded-full overflow-hidden mt-0.5;
+  background: rgba(30, 41, 59, 0.4);
+}
+
+.recorder-meter-fill {
+  @apply h-full rounded-full transition-all duration-75;
+}
+
+.recorder-meter-fill.idle {
+  @apply w-0;
+}
+
+.recorder-meter-fill.listening {
+  background: linear-gradient(
+    90deg,
+    theme('colors.accent.purple'),
+    theme('colors.accent.pink')
+  );
+}
+
+.recorder-meter-fill.recording-level {
+  background: linear-gradient(
+    90deg,
+    rgba(167, 139, 250, 0.6),
+    theme('colors.accent.purple'),
+    #F87171
+  );
+}
+
+.recorder-preview {
+  @apply flex items-center gap-2 text-xs text-accent-purple font-medium truncate;
+}

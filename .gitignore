@@ -25,20 +25,19 @@ Thumbs.db
 .python-version
 
 # ── Trained model files (saved to models/) ─────────────────────────
-# Track only the primary audiovec_model.pt; ignore backups & other arch checkpoints
+audiovec_model.h5
+# Ignore backup / snapshot models, but track the primary audiovec_model.pt
 models/*.pt.*
-models/cnn.pt
-models/crnn-gru.pt
-models/crnn-lstm.pt
-models/crnn-unigru.pt
-models/crnn-transformer.pt
 
+# ── Generated visualizations ────────────────────────────────────────
+# embeddings_2d.png
+# embeddings_3d.html
 
 # ── Old notes / docs ────────────────────────────────────────────────
 doc.md
+report.md
 space_gitignore
 
-# ── Dataset artifacts (ignore raw data, keep only extraction scripts) ─
+# ── Dataset artifacts (keep extracted ravdess/ only) ────────────────
 ravdess-emotional-speech-audio.zip
 audio_speech_actors_01-24/
-ravdess/
