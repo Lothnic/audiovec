@@ -1,7 +1,0 @@
-{
-  "functions": {
-    "api/predict": {
-      "includeFiles": "app/api/predict/models/**"
-    }
-  }
-}
