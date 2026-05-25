@@ -18,61 +18,80 @@ import { EMOTIONS, type Emotion, type PredictResult } from "./emotions";
 // for binary files inside the app directory, so we fall back to downloading
 // the model from GitHub on cold start and caching it in /tmp.
 
-const MODEL_FILENAME = "crnn-transformer.onnx";
+// ── Model files ──────────────────────────────────────────────────────────────
+//
+// The ONNX model was exported with **external data format**, meaning the
+// weight tensors live in a separate `<model>.onnx.data` file alongside the
+// `<model>.onnx` graph file.  ONNX Runtime requires *both* files to be
+// present in the same directory at inference time.
+//
+// On Vercel, the serverless-function file tracer (`outputFileTracingIncludes`)
+// often misses binary files, so we download both files from GitHub on cold
+// start and cache them in /tmp.
+
+const MODEL_DIR = "/tmp/models";
+const MODEL_PREFIX = "crnn-transformer";
+const MODEL_FILES = [`${MODEL_PREFIX}.onnx`, `${MODEL_PREFIX}.onnx.data`] as const;
+
+const RAW_GITHUB_BASE =
+  "https://raw.githubusercontent.com/Lothnic/audiovec/master/web/app/api/predict/models";
 
 /**
- * Public URL for the ONNX model file (tracked in git at
- * `web/app/api/predict/models/crnn-transformer.onnx`).
- * Used as a download fallback when file tracing doesn't include the model.
+ * Download the model files (onnx + optional .data companion) from the public
+ * GitHub raw URL and save them to /tmp/models/.
  */
-const MODEL_DOWNLOAD_URL =
-  "https://raw.githubusercontent.com/Lothnic/audiovec/master/web/app/api/predict/models/crnn-transformer.onnx";
+async function downloadModelFiles(): Promise<void> {
+  fs.mkdirSync(MODEL_DIR, { recursive: true });
+
+  for (const filename of MODEL_FILES) {
+    const dest = path.join(MODEL_DIR, filename);
+
+    // Skip if already downloaded (e.g. from a parallel cold-start request)
+    if (fs.existsSync(dest)) {
+      continue;
+    }
+
+    const url = `${RAW_GITHUB_BASE}/${filename}`;
+    console.log(`Downloading model file: ${url}`);
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(
+        `Failed to download ${filename}: HTTP ${response.status} ${response.statusText}`
+      );
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    fs.writeFileSync(dest, buffer);
+    console.log(`Downloaded ${filename} (${buffer.length} bytes)`);
+  }
+}
 
 /**
- * Try to resolve the model file from several locations in order of preference.
- * Returns the first path that exists on disk, or null if not found anywhere.
+ * Ensure the model (and its companion .data file) are available on disk,
+ * returning the path to the .onnx file.
  */
-function resolveModelPath(): string | null {
-  // 1. Env-var override (absolute or relative to cwd)
+async function ensureModel(): Promise<string> {
+  // 1. Env-var override
   if (process.env.MODEL_PATH) {
     return path.resolve(process.cwd(), process.env.MODEL_PATH);
   }
 
   // 2. Next.js file-trace output (__dirname in bundled serverless function)
-  const tracedPath = path.resolve(__dirname, "models", MODEL_FILENAME);
+  const tracedPath = path.resolve(__dirname, "models", MODEL_FILES[0]);
   if (fs.existsSync(tracedPath)) {
     return tracedPath;
   }
 
-  // 3. /tmp cache (downloaded on a previous cold start)
-  const cachedPath = path.resolve("/tmp", "models", MODEL_FILENAME);
+  // 3. /tmp cache (downloaded on a prior cold start)
+  const cachedPath = path.join(MODEL_DIR, MODEL_FILES[0]);
   if (fs.existsSync(cachedPath)) {
     return cachedPath;
   }
 
-  return null;
-}
-
-/**
- * Download the model from the public URL and save it to /tmp/models/.
- */
-async function downloadModel(): Promise<string> {
-  const dir = path.resolve("/tmp", "models");
-  fs.mkdirSync(dir, { recursive: true });
-  const dest = path.resolve(dir, MODEL_FILENAME);
-
-  console.log(`Downloading model from ${MODEL_DOWNLOAD_URL}`);
-  const response = await fetch(MODEL_DOWNLOAD_URL);
-  if (!response.ok) {
-    throw new Error(
-      `Failed to download model: HTTP ${response.status} ${response.statusText}`
-    );
-  }
-
-  const buffer = Buffer.from(await response.arrayBuffer());
-  fs.writeFileSync(dest, buffer);
-  console.log(`Model downloaded (${buffer.length} bytes) to ${dest}`);
-  return dest;
+  // 4. Download from GitHub and cache in /tmp
+  await downloadModelFiles();
+  return path.join(MODEL_DIR, MODEL_FILES[0]);
 }
 
 // ── ONNX session (singleton) ────────────────────────────────────────────────
@@ -81,8 +100,7 @@ let _session: ort.InferenceSession | null = null;
 
 async function getSession(): Promise<ort.InferenceSession> {
   if (!_session) {
-    const localPath = resolveModelPath();
-    const modelPath = localPath ?? (await downloadModel());
+    const modelPath = await ensureModel();
     _session = await ort.InferenceSession.create(modelPath);
   }
   return _session;

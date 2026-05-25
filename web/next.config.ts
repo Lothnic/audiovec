@@ -5,11 +5,14 @@ const nextConfig: NextConfig = {
   // This prevents Next.js from trying to bundle it with client code.
   serverExternalPackages: ["onnxruntime-node"],
 
-  // Best-effort: try to include the ONNX model via file tracing.
-  // Inference.ts has a runtime download fallback if this doesn't work.
+  // Best-effort: try to include the ONNX model files via file tracing.
+  // Inference.ts has a runtime download fallback if tracing doesn't pick them up.
   experimental: {
     outputFileTracingIncludes: {
-      "/api/predict": ["app/api/predict/models/crnn-transformer.onnx"],
+      "/api/predict": [
+        "app/api/predict/models/crnn-transformer.onnx",
+        "app/api/predict/models/crnn-transformer.onnx.data",
+      ],
     },
   },
 };
