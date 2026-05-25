@@ -16,12 +16,11 @@ let _session: ort.InferenceSession | null = null;
 
 async function getSession(): Promise<ort.InferenceSession> {
   if (!_session) {
-    const modelPath = path.resolve(
-      process.cwd(),
-      "..",
-      "models",
-      "crnn-transformer.onnx"
-    );
+    // Allow overriding the model path via env var. Default is relative
+    // to the Next.js project root (web/) pointing to models/ at the
+    // project root.
+    const relativePath = process.env.MODEL_PATH ?? "../models/crnn-transformer.onnx";
+    const modelPath = path.resolve(process.cwd(), relativePath);
     _session = await ort.InferenceSession.create(modelPath);
   }
   return _session;

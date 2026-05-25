@@ -16,6 +16,10 @@ venv/
 .DS_Store
 Thumbs.db
 
+# ── Next.js build artifacts ──────────────────────────────────────────
+.next/
+*.tsbuildinfo
+
 # ── IDE / editor ────────────────────────────────────────────────────
 .vscode/
 .idea/
