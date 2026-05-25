@@ -13,15 +13,7 @@ const nextConfig: NextConfig = {
     outputFileTracingIncludes: {
       "/api/predict": ["../models/crnn-transformer.onnx"],
     },
-    // Exclude GPU-specific ONNX Runtime providers (~330MB CUDA lib)
-    // from the serverless function bundle since we only need CPU inference.
-    outputFileTracingExcludes: {
-      "/api/predict": [
-        "**/*cuda*",
-        "**/*tensorrt*",
-        "**/*openvino*",
-      ],
-    },
+
   },
 };
 
