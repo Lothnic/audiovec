@@ -12,6 +12,7 @@ const nextConfig: NextConfig = {
       "/api/predict": [
         "app/api/predict/models/crnn-transformer.onnx",
         "app/api/predict/models/crnn-transformer.onnx.data",
+        "app/api/predict/models/version.json",
       ],
     },
   },
