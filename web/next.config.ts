@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
   // by inference.ts via path.resolve(process.cwd(), "..", "models", ...).
   experimental: {
     outputFileTracingIncludes: {
-      "/api/predict": ["../models/crnn-transformer.onnx"],
+      "/api/predict": ["./models/crnn-transformer.onnx"],
     },
 
   },
