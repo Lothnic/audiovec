@@ -6,14 +6,13 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["onnxruntime-node"],
 
   // Ensure the ONNX model file is included in the serverless function bundle.
-  // The path is relative to this file (the Next.js project root, i.e. web/).
-  // The model lives at ../models/crnn-transformer.onnx and is loaded dynamically
-  // by inference.ts via path.resolve(process.cwd(), "..", "models", ...).
+  // The model lives at web/app/api/predict/models/ alongside the route handler
+  // so Next.js traces it automatically into the built function output.
+  // inference.ts resolves it via path.resolve(__dirname, "models", ...).
   experimental: {
     outputFileTracingIncludes: {
-      "/api/predict": ["./models/crnn-transformer.onnx"],
+      "/api/predict": ["app/api/predict/models/crnn-transformer.onnx"],
     },
-
   },
 };
 
