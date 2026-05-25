@@ -5,9 +5,13 @@ const nextConfig: NextConfig = {
   // This prevents Next.js from trying to bundle it with client code.
   serverExternalPackages: ["onnxruntime-node"],
 
-  // Model is copied into the serverless function output manually by the
-  // vercel-build script in package.json (post-next-build copy step).
-  // inference.ts resolves it via path.resolve(__dirname, "models", ...).
+  // Ensure the ONNX model is included in the serverless function bundle.
+  // Both this config and web/vercel.json target the same file as a belt-and-suspenders approach.
+  experimental: {
+    outputFileTracingIncludes: {
+      "/api/predict": ["app/api/predict/models/crnn-transformer.onnx"],
+    },
+  },
 };
 
 export default nextConfig;
