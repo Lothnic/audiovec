@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "postinstall": "node -e \"const fs=require('fs'),path=require('path'),glob=(p)=>fs.readdirSync(p,{withFileTypes:true}).filter(f=>f.isFile()).map(f=>path.join(p,f.name));const dirs=[path.join(path.dirname(require.resolve('onnxruntime-node/package.json')),'bin')];dirs.forEach(d=>{if(!fs.existsSync(d))return;const walk=(p)=>{fs.readdirSync(p,{withFileTypes:true}).forEach(e=>{const fp=path.join(p,e.name);if(e.isDirectory())walk(fp);else if(/cuda|tensorrt|openvino/i.test(e.name)){fs.rmSync(fp);console.log('Removed GPU provider:',fp)}})};walk(d)})\"",
-    "vercel-build": "node -e \"const fs=require('fs'),path=require('path'),dir=path.join(path.dirname(require.resolve('onnxruntime-node/package.json')),'bin');const walk=(p)=>{if(!fs.existsSync(p))return;fs.readdirSync(p,{withFileTypes:true}).forEach(e=>{const fp=path.join(p,e.name);if(e.isDirectory())walk(fp);else if(/cuda|tensorrt|openvino/i.test(e.name)){fs.rmSync(fp);console.log('Removed:',fp)}})};walk(dir);\" && next build && mkdir -p .next/server/app/api/predict/models && cp app/api/predict/models/crnn-transformer.onnx .next/server/app/api/predict/models/crnn-transformer.onnx && echo 'Model copied to function output'"
+    "vercel-build": "node -e \"const fs=require('fs'),path=require('path'),dir=path.join(path.dirname(require.resolve('onnxruntime-node/package.json')),'bin');const walk=(p)=>{if(!fs.existsSync(p))return;fs.readdirSync(p,{withFileTypes:true}).forEach(e=>{const fp=path.join(p,e.name);if(e.isDirectory())walk(fp);else if(/cuda|tensorrt|openvino/i.test(e.name)){fs.rmSync(fp);console.log('Removed:',fp)}})};walk(dir);\" && next build"
   },
   "dependencies": {
     "next": "^14.2.0",
